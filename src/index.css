@@ -1,0 +1,10 @@
+@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global styles */
+body {
+  @apply bg-white text-black;
+  font-family: 'Manrope', sans-serif;
+}
