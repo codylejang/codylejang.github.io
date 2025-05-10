@@ -20,7 +20,7 @@ export default function FadingLine({ text, lineIndex }) {
         opacity: fadeOut ? 0 : 1
       }}
       transition={{ duration: 2, ease: 'easeOut' }}
-      className="flex flex-wrap gap-2 absolute left-1/2 -translate-x-1/2"
+      className="flex gap-[0.5em] justify-center text-center absolute left-1/2 -translate-x-1/2 max-w-[95vw] overflow-hidden px-2"
     >
       {words.map((word, i) => (
         <motion.span
@@ -35,7 +35,7 @@ export default function FadingLine({ text, lineIndex }) {
             duration: fadeOut ? 0.4 : 1.2,
             ease: 'easeOut'
           }}
-          className="text-base"
+          className="text-[clamp(0.85rem,2.5vw,1rem)]"
         >
           {word}
         </motion.span>

@@ -62,7 +62,7 @@ function App() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-white text-black">
-      <div className="absolute top-[20%] left-1/2 -translate-x-1/2 w-full">
+      <div className="absolute top-[20%] left-0 w-full px-2 sm:px-4">
         {visibleLines.map((line) => (
           <FadingLine
             key={line.id}
