@@ -24,7 +24,7 @@ export default function ResumeModal() {
 
           <div className="flex-1 overflow-y-auto border rounded">
             <iframe
-              src="/portfolio/resume.pdf"
+              src="/resume.pdf"
               title="Resume"
               className="w-full h-full rounded"
               style={{ minHeight: '100%' }}
@@ -33,7 +33,7 @@ export default function ResumeModal() {
 
           <div className="mt-4 flex justify-between items-center">
             <a
-              href="/portfolio/resume.pdf"
+              href="/resume.pdf"
               download
               className="text-sm text-white bg-black px-4 py-2 rounded hover:bg-gray-800 transition"
             >
