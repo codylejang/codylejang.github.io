@@ -14,6 +14,7 @@ const SONGS = [
   'Aphex Twin - Tha.mp3',
   'Aphex Twin - We Are the Music Makers.mp3',
   'Aphex Twin - Xtal.mp3',
+  'Flare.mp3',
   'Beginning.mp3',
   'Cat.mp3',
   'Chris.mp3',
@@ -67,10 +68,13 @@ function formatTime(sec) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+const ARTIST_OVERRIDES = {
+  'Flare.mp3': 'AGST',
+}
+
 function getArtist(filename) {
-  if (filename.includes(' - ')) {
-    return filename.split(' - ')[0]
-  }
+  if (ARTIST_OVERRIDES[filename]) return ARTIST_OVERRIDES[filename]
+  if (filename.includes(' - ')) return filename.split(' - ')[0]
   return 'C418'
 }
 
