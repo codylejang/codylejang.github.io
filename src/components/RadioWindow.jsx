@@ -40,8 +40,25 @@ const SONGS = [
   'Wet Hands.mp3',
 ]
 
-const WINDOW_WIDTH = 360
-const WINDOW_HEIGHT = 480
+function getWindowSize() {
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  if (vw < 400) {
+    // Mobile: fit within viewport with padding
+    return { w: Math.min(vw - 16, 340), h: Math.min(vh - 32, 420) }
+  }
+  return { w: 360, h: 480 }
+}
+
+function getInitialPosition() {
+  const { w, h } = getWindowSize()
+  const vw = window.innerWidth
+  const vh = window.innerHeight
+  return {
+    x: Math.max(0, Math.floor((vw - w) / 2)),
+    y: Math.max(0, Math.floor((vh - h) / 2)),
+  }
+}
 
 function formatTime(sec) {
   if (!sec || isNaN(sec)) return '0:00'
@@ -73,8 +90,11 @@ export default function RadioWindow({ isOpen, onClose }) {
   const [durations, setDurations] = useState({})
   const [volume, setVolume] = useState(0.7)
 
+  // Window size (responsive)
+  const [windowSize, setWindowSize] = useState(getWindowSize)
+
   // Dragging state
-  const [position, setPosition] = useState({ x: 80, y: 80 })
+  const [position, setPosition] = useState(getInitialPosition)
   const [dragging, setDragging] = useState(false)
   const dragOffset = useRef({ x: 0, y: 0 })
 
@@ -319,58 +339,103 @@ export default function RadioWindow({ isOpen, onClose }) {
     playSong(idx)
   }
 
-  // Seek
+  // Seek (supports both mouse and touch)
   const handleSeek = (e) => {
     const audio = audioRef.current
     if (!audio) return
     const dur = audio.duration
     if (!dur || isNaN(dur) || !isFinite(dur)) return
     const rect = e.currentTarget.getBoundingClientRect()
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width))
+    let clientX
+    if (e.changedTouches && e.changedTouches.length > 0) {
+      clientX = e.changedTouches[0].clientX
+    } else if (e.touches && e.touches.length > 0) {
+      clientX = e.touches[0].clientX
+    } else {
+      clientX = e.clientX
+    }
+    const pct = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
     audio.currentTime = pct * dur
     setCurrentTime(pct * dur)
     setDuration(dur)
   }
 
-  // Dragging — clamp to viewport
-  const onMouseDown = (e) => {
-    if (e.target.closest('.radio-no-drag')) return
+  // Dragging — supports mouse + touch, clamps to viewport
+  const startDrag = (clientX, clientY) => {
     setDragging(true)
     dragOffset.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
+      x: clientX - position.x,
+      y: clientY - position.y,
     }
+  }
+
+  const onMouseDown = (e) => {
+    if (e.target.closest('.radio-no-drag')) return
+    startDrag(e.clientX, e.clientY)
+  }
+
+  const onTouchStart = (e) => {
+    if (e.target.closest('.radio-no-drag')) return
+    const touch = e.touches[0]
+    startDrag(touch.clientX, touch.clientY)
   }
 
   useEffect(() => {
     if (!dragging) return
-    const onMove = (e) => {
-      const maxX = window.innerWidth - WINDOW_WIDTH
-      const maxY = window.innerHeight - WINDOW_HEIGHT
-      const newX = Math.max(0, Math.min(maxX, e.clientX - dragOffset.current.x))
-      const newY = Math.max(0, Math.min(maxY, e.clientY - dragOffset.current.y))
+    const { w, h } = getWindowSize()
+
+    const handleMove = (clientX, clientY) => {
+      const maxX = window.innerWidth - w
+      const maxY = window.innerHeight - h
+      const newX = Math.max(0, Math.min(maxX, clientX - dragOffset.current.x))
+      const newY = Math.max(0, Math.min(maxY, clientY - dragOffset.current.y))
       setPosition({ x: newX, y: newY })
     }
-    const onUp = () => setDragging(false)
-    window.addEventListener('mousemove', onMove)
-    window.addEventListener('mouseup', onUp)
+
+    const onMouseMove = (e) => handleMove(e.clientX, e.clientY)
+    const onTouchMove = (e) => {
+      e.preventDefault()
+      handleMove(e.touches[0].clientX, e.touches[0].clientY)
+    }
+    const onEnd = () => setDragging(false)
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onEnd)
+    window.addEventListener('touchmove', onTouchMove, { passive: false })
+    window.addEventListener('touchend', onEnd)
     return () => {
-      window.removeEventListener('mousemove', onMove)
-      window.removeEventListener('mouseup', onUp)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onEnd)
+      window.removeEventListener('touchmove', onTouchMove)
+      window.removeEventListener('touchend', onEnd)
     }
   }, [dragging])
 
-  // Clamp on window resize
+  // Recalculate size + clamp position on window resize
   useEffect(() => {
     const onResize = () => {
+      const size = getWindowSize()
+      setWindowSize(size)
       setPosition(prev => ({
-        x: Math.max(0, Math.min(prev.x, window.innerWidth - WINDOW_WIDTH)),
-        y: Math.max(0, Math.min(prev.y, window.innerHeight - WINDOW_HEIGHT)),
+        x: Math.max(0, Math.min(prev.x, window.innerWidth - size.w)),
+        y: Math.max(0, Math.min(prev.y, window.innerHeight - size.h)),
       }))
     }
     window.addEventListener('resize', onResize)
     return () => window.removeEventListener('resize', onResize)
   }, [])
+
+  // Recenter and resize when opening
+  useEffect(() => {
+    if (isOpen) {
+      const size = getWindowSize()
+      setWindowSize(size)
+      setPosition(prev => ({
+        x: Math.max(0, Math.min(prev.x, window.innerWidth - size.w)),
+        y: Math.max(0, Math.min(prev.y, window.innerHeight - size.h)),
+      }))
+    }
+  }, [isOpen])
 
   // Scroll active song into view
   useEffect(() => {
@@ -390,18 +455,19 @@ export default function RadioWindow({ isOpen, onClose }) {
       style={{
         left: position.x,
         top: position.y,
-        width: WINDOW_WIDTH,
+        width: windowSize.w,
         userSelect: dragging ? 'none' : 'auto',
       }}
     >
       {/* Window */}
       <div className="bg-white border border-gray-300 rounded-lg shadow-2xl overflow-hidden flex flex-col"
-        style={{ height: WINDOW_HEIGHT }}
+        style={{ height: windowSize.h }}
       >
-        {/* Title bar - draggable */}
+        {/* Title bar - draggable (mouse + touch) */}
         <div
           className="flex items-center justify-between px-3 py-2 border-b border-gray-200 cursor-move select-none bg-gray-50"
           onMouseDown={onMouseDown}
+          onTouchStart={onTouchStart}
         >
           <span className="text-[10px] font-semibold tracking-[0.2em] uppercase text-gray-800">
             CODYLEJANG: RADIO 1
@@ -480,6 +546,7 @@ export default function RadioWindow({ isOpen, onClose }) {
           <div
             className="radio-no-drag w-full h-1.5 bg-gray-200 rounded-full cursor-pointer mb-3 group"
             onClick={handleSeek}
+            onTouchEnd={handleSeek}
           >
             <div
               className="h-full bg-black rounded-full relative"
